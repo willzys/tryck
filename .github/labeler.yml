@@ -1,0 +1,19 @@
+core:
+  - changed-files:
+      - any-glob-to-any-file: src/core/**
+
+boundary:
+  - changed-files:
+      - any-glob-to-any-file: src/boundary/**
+
+flow:
+  - changed-files:
+      - any-glob-to-any-file: src/flow/**
+
+errors:
+  - changed-files:
+      - any-glob-to-any-file: src/errors/**
+
+utils:
+  - changed-files:
+      - any-glob-to-any-file: src/utils/**

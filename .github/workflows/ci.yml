@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: package.json
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run format:check
+      - run: bun run typecheck
+      - run: bun test --coverage ./tests
+      - run: bun run build
+      - run: bun run attw
+      - run: bun run treeshake
+      - run: bun run pack:test
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dist
+          path: dist
+
+  runtime:
+    name: Node ${{ matrix.node }}
+    needs: verify
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24, 26]
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Import the build
+        run: |
+          echo '{"type":"module"}' > package.json
+          node -e "
+            import('./dist/index.js').then(({ attempt, gen, unwrap }) => {
+              const result = gen(function* () {
+                return yield* attempt(() => JSON.parse('1'), SyntaxError)
+              })
+              if (unwrap(result) !== 1) process.exit(1)
+            })
+          "
+
+  typescript:
+    name: TypeScript ${{ matrix.typescript }}
+    needs: verify
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        typescript: ['5.0', '5.9']
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+      - run: npx -y -p typescript@${{ matrix.typescript }} tsc -p tests/compat
+      - run: npx -y -p typescript@${{ matrix.typescript }} tsc -p tests/compat/tsconfig.strictest.json
