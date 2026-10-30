@@ -1,4 +1,5 @@
 import { handlerFor, whenSettled } from '../utils/dispatch'
+import { isTagged } from '../utils/inspect'
 
 import type { Result } from '../core/result'
 import type { HandlerReturn, NoExtraKeys, TagOf } from '../utils/dispatch'
@@ -37,7 +38,11 @@ const matchSettled = <T, E, R>(
 
   const handle = handlerFor(handlers, result.error)
 
-  if (!handle) throw new TypeError('tryck: unhandled error')
+  if (!handle) {
+    const tag = isTagged(result.error) ? ` "${result.error._tag}"` : ''
+
+    throw new TypeError(`tryck: unhandled error${tag}`)
+  }
 
   return handle(result.error)
 }

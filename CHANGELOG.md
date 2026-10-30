@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changes
+
+- `match` names the `_tag` it could not handle in its runtime error.
+
 ## 0.1.0
 
 First release: typed errors for TypeScript that catch only what you declare and let every bug surface.
