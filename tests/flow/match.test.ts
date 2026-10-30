@@ -163,6 +163,13 @@ describe('match', () => {
     expect(incomplete).toBeFunction()
   })
 
+  test('types an any input as a promise, as before', () => {
+    // JSON.parse returns any
+    const fold = () => match(JSON.parse('null'), { err: () => 0, ok: () => 1 })
+
+    expectTypeOf(fold).returns.toEqualTypeOf<Promise<number>>()
+  })
+
   test('lets an unexpected rejection reject', async () => {
     const pending: Promise<Result<string, NotFound | Banned>> = Promise.reject(
       new TypeError('bug')

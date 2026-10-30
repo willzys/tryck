@@ -1,6 +1,6 @@
 import { whenSettled } from '../utils/dispatch'
 
-import type { Sync } from '../utils/dispatch'
+import type { MaybeAsyncResult, Settled, Sync } from '../utils/dispatch'
 
 export class Ok<T> {
   readonly ok = true as const
@@ -48,15 +48,10 @@ export function ok<T>(value?: T): Ok<T | undefined> {
 export const err = <const E>(error: E): Err<E> => new Err(error)
 
 /** Transforms the error of an `Err`, leaving an `Ok` untouched. */
-export function mapErr<T, E, F>(
-  result: PromiseLike<Result<T, E>>,
-  fn: (error: E) => F & Sync<F>
-): Promise<Result<T, F>>
-
-export function mapErr<T, E, F>(
-  result: Result<T, E>,
-  fn: (error: E) => F & Sync<F>
-): Result<T, F>
+export function mapErr<Input extends MaybeAsyncResult, F>(
+  result: Input,
+  fn: (error: ErrorOf<Awaited<Input>>) => F & Sync<F>
+): Settled<Input, Result<ValueOf<Awaited<Input>>, F>>
 
 export function mapErr<T, E, F>(
   result: Result<T, E> | PromiseLike<Result<T, E>>,

@@ -1,5 +1,7 @@
 import { isTagged, isThenable } from './inspect'
 
+import type { Result } from '../core/result'
+
 export type TagOf<E> = E extends { readonly _tag: infer K extends string }
   ? K
   : never
@@ -15,6 +17,19 @@ export type HandlerReturn<H> = {
 export type Async<R> = Extract<R, PromiseLike<unknown>>
 
 export type Sync<R> = Exclude<R, PromiseLike<unknown>>
+
+export type MaybeAsyncResult =
+  | Result<unknown, unknown>
+  | PromiseLike<Result<unknown, unknown>>
+
+export type IsAny<R> = 0 extends 1 & R ? true : false
+
+export type Settled<I, V> =
+  IsAny<I> extends true
+    ? Promise<Awaited<V>>
+    : I extends PromiseLike<unknown>
+      ? Promise<Awaited<V>>
+      : V
 
 export const whenSettled = <A, B>(
   value: A | PromiseLike<A>,

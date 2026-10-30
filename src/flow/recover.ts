@@ -1,7 +1,13 @@
 import { handlerFor, whenSettled } from '../utils/dispatch'
 
 import type { ErrorOf, Result, ValueOf } from '../core/result'
-import type { HandlerReturn, NoExtraKeys, TagOf } from '../utils/dispatch'
+import type {
+  HandlerReturn,
+  NoExtraKeys,
+  MaybeAsyncResult,
+  Settled,
+  TagOf
+} from '../utils/dispatch'
 
 type Recovery<E> = {
   readonly [K in TagOf<E>]?: (
@@ -35,19 +41,15 @@ const recoverSettled = <T, E, U, F>(
 
 /** Handles errors by `_tag` and removes them from the error type. */
 export function recover<
-  T,
-  H extends NoExtraKeys<H, 'err' | TagOf<E>>,
-  E = never
+  Input extends MaybeAsyncResult,
+  H extends NoExtraKeys<H, 'err' | TagOf<ErrorOf<Awaited<Input>>>>
 >(
-  result: PromiseLike<Result<T, E>>,
-  handlers: Recovery<E> & H
-): Promise<Recovered<T, E, H>>
-
-export function recover<
-  T,
-  H extends NoExtraKeys<H, 'err' | TagOf<E>>,
-  E = never
->(result: Result<T, E>, handlers: Recovery<E> & H): Recovered<T, E, H>
+  result: Input,
+  handlers: Recovery<ErrorOf<Awaited<Input>>> & H
+): Settled<
+  Input,
+  Recovered<ValueOf<Awaited<Input>>, ErrorOf<Awaited<Input>>, H>
+>
 
 export function recover<T, E, U, F>(
   result: Result<T, E> | PromiseLike<Result<T, E>>,

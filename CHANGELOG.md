@@ -5,6 +5,7 @@
 ### Breaking
 
 - `mapErr` rejects async callbacks at compile time. They used to produce an `Err` holding a promise, which `match` and `recover` could not dispatch on.
+- `match`, `recover`, `mapErr`, `unwrap` and `gen` take the input as their type parameter (`unwrap<Result<User, NotFound>>` instead of `unwrap<User, NotFound>`). Calls that let TypeScript infer the types are unaffected.
 
 ### Changes
 

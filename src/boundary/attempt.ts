@@ -2,8 +2,14 @@ import { Err, Ok } from '../core/result'
 import { whenSettled } from '../utils/dispatch'
 import { isThenable } from '../utils/inspect'
 
-import type { Result } from '../core/result'
-import type { Async, Sync } from '../utils/dispatch'
+import type { Result, ValueOf } from '../core/result'
+import type {
+  Async,
+  IsAny,
+  MaybeAsyncResult,
+  Settled,
+  Sync
+} from '../utils/dispatch'
 
 export type Catchable = abstract new (...args: never) => Error
 
@@ -32,8 +38,6 @@ type CaughtBy<C> = C extends readonly [unknown, infer T extends Translation]
   : Instance<C>
 
 export type Caught<C extends Catches> = CaughtBy<C[number]>
-
-type IsAny<R> = 0 extends 1 & R ? true : false
 
 type IsUnknown<R> = unknown extends R ? true : false
 
@@ -118,9 +122,9 @@ export const safe =
     attempt(() => fn(...args), ...catches)
 
 /** Returns the value of an `Ok` or throws the error of an `Err`. */
-export function unwrap<T, E>(result: PromiseLike<Result<T, E>>): Promise<T>
-
-export function unwrap<T, E>(result: Result<T, E>): T
+export function unwrap<Input extends MaybeAsyncResult>(
+  result: Input
+): Settled<Input, ValueOf<Awaited<Input>>>
 
 export function unwrap<T, E>(
   result: Result<T, E> | PromiseLike<Result<T, E>>
