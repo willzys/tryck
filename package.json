@@ -1,6 +1,6 @@
 {
   "name": "tryck",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "the trick to never writing try/catch again: typed results, generator composition, defects stay exceptions",
   "keywords": [
     "either",
