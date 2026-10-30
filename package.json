@@ -22,7 +22,8 @@
     "url": "git+https://github.com/willzys/tryck.git"
   },
   "files": [
-    "dist"
+    "dist",
+    "llms.txt"
   ],
   "type": "module",
   "sideEffects": false,
@@ -44,8 +45,10 @@
     "compat": "tsc -p tests/compat && tsc -p tests/compat/tsconfig.strictest.json",
     "treeshake": "bun tests/compat/treeshake.ts",
     "pack:test": "bun tests/compat/pack.ts",
+    "size": "bun tests/compat/size.ts",
+    "snippets": "bun tests/compat/snippets.ts",
     "test": "bun test ./tests",
-    "check": "bun run lint && bun run format:check && bun run typecheck && bun test --coverage ./tests && bun run build && bun run attw && bun run compat && bun run treeshake && bun run pack:test",
+    "check": "bun run lint && bun run format:check && bun run typecheck && bun test --coverage ./tests && bun run build && bun run attw && bun run compat && bun run treeshake && bun run size && bun run snippets && bun run pack:test",
     "prepare": "simple-git-hooks",
     "prepublishOnly": "bun run check"
   },
