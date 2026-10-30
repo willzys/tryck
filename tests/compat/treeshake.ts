@@ -1,4 +1,4 @@
-const entry = new URL('only-ok.ts', import.meta.url).pathname
+const entry = Bun.fileURLToPath(new URL('only-ok.ts', import.meta.url))
 const build = await Bun.build({ entrypoints: [entry], minify: true })
 const [bundle] = build.outputs
 const code = bundle ? await bundle.text() : ''
