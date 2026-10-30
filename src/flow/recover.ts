@@ -1,7 +1,7 @@
 import { handlerFor, whenSettled } from '../utils/dispatch'
 
 import type { ErrorOf, Result, ValueOf } from '../core/result'
-import type { Only, TagOf } from '../utils/dispatch'
+import type { HandlerReturn, NoExtraKeys, TagOf } from '../utils/dispatch'
 
 type Recovery<E> = {
   readonly [K in TagOf<E>]?: (
@@ -9,17 +9,13 @@ type Recovery<E> = {
   ) => Result<unknown, unknown>
 } & { readonly err?: (error: E) => Result<unknown, unknown> }
 
-type Produced<H> = {
-  [K in keyof H]: H[K] extends (...args: never) => infer R ? R : never
-}[keyof H]
-
 type Left<E, H> = 'err' extends keyof H
   ? never
   : Exclude<E, { readonly _tag: keyof H }>
 
 type Recovered<T, E, H> = Result<
-  T | ValueOf<Produced<H>>,
-  Left<E, H> | ErrorOf<Produced<H>>
+  T | ValueOf<HandlerReturn<H>>,
+  Left<E, H> | ErrorOf<HandlerReturn<H>>
 >
 
 type RecoveryTable<E, U, F> = Readonly<
@@ -38,15 +34,21 @@ const recoverSettled = <T, E, U, F>(
 }
 
 /** Handles errors by `_tag` and removes them from the error type. */
-export function recover<T, H extends Only<H, 'err' | TagOf<E>>, E = never>(
+export function recover<
+  T,
+  H extends NoExtraKeys<H, 'err' | TagOf<E>>,
+  E = never
+>(
   result: PromiseLike<Result<T, E>>,
   handlers: Recovery<E> & H
 ): Promise<Recovered<T, E, H>>
-/** Handles errors by `_tag` and removes them from the error type. */
-export function recover<T, H extends Only<H, 'err' | TagOf<E>>, E = never>(
-  result: Result<T, E>,
-  handlers: Recovery<E> & H
-): Recovered<T, E, H>
+
+export function recover<
+  T,
+  H extends NoExtraKeys<H, 'err' | TagOf<E>>,
+  E = never
+>(result: Result<T, E>, handlers: Recovery<E> & H): Recovered<T, E, H>
+
 export function recover<T, E, U, F>(
   result: Result<T, E> | PromiseLike<Result<T, E>>,
   handlers: RecoveryTable<E, U, F>

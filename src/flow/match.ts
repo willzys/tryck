@@ -1,7 +1,7 @@
 import { handlerFor, whenSettled } from '../utils/dispatch'
 
 import type { Result } from '../core/result'
-import type { Only, TagOf } from '../utils/dispatch'
+import type { HandlerReturn, NoExtraKeys, TagOf } from '../utils/dispatch'
 
 type Handler<V, R> = (value: V) => R
 
@@ -23,10 +23,6 @@ interface OkHandler<T, R> {
 
 export type Handlers<T, E, R> = OkHandler<T, R> & ErrHandlers<E, R>
 
-type Returned<H> = {
-  [K in keyof H]: H[K] extends Handler<never, infer R> ? R : never
-}[keyof H]
-
 interface MatchTable<V, R> {
   readonly ok: Handler<V, R>
   readonly err?: Handler<V, R>
@@ -47,15 +43,21 @@ const matchSettled = <T, E, R>(
 }
 
 /** Folds a `Result` into one value, with a handler per outcome. */
-export function match<T, H extends Only<H, 'ok' | 'err' | TagOf<E>>, E = never>(
+export function match<
+  T,
+  H extends NoExtraKeys<H, 'ok' | 'err' | TagOf<E>>,
+  E = never
+>(
   result: PromiseLike<Result<T, E>>,
   handlers: Handlers<T, E, unknown> & H
-): Promise<Awaited<Returned<H>>>
-/** Folds a `Result` into one value, with a handler per outcome. */
-export function match<T, H extends Only<H, 'ok' | 'err' | TagOf<E>>, E = never>(
-  result: Result<T, E>,
-  handlers: Handlers<T, E, unknown> & H
-): Returned<H>
+): Promise<Awaited<HandlerReturn<H>>>
+
+export function match<
+  T,
+  H extends NoExtraKeys<H, 'ok' | 'err' | TagOf<E>>,
+  E = never
+>(result: Result<T, E>, handlers: Handlers<T, E, unknown> & H): HandlerReturn<H>
+
 export function match<T, E, R>(
   result: Result<T, E> | PromiseLike<Result<T, E>>,
   handlers: MatchTable<T | E, R>

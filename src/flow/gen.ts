@@ -4,7 +4,7 @@ import { isResult } from '../utils/inspect'
 import type { Err, ErrorOf, Result } from '../core/result'
 
 type Unwrapped<T> =
-  T extends Ok<infer V> ? V : T extends Err<ErrorOf<T>> ? never : T
+  T extends Ok<infer V> ? V : T extends Err<unknown> ? never : T
 
 type Outcome<Y, T> = Result<Unwrapped<T>, ErrorOf<Y> | ErrorOf<T>>
 
@@ -35,10 +35,11 @@ const runAsync = async <Y, T>(steps: AsyncGenerator<Y, T | undefined>) => {
 export function gen<Y extends Err<unknown>, T>(
   body: () => AsyncGenerator<Y, T>
 ): Promise<Outcome<Y, T>>
-/** Runs a generator where `yield*` unwraps results, like Rust's `?`. */
+
 export function gen<Y extends Err<unknown>, T>(
   body: () => Generator<Y, T>
 ): Outcome<Y, T>
+
 export function gen<Y, T>(
   body: () => Generator<Y, T | undefined> | AsyncGenerator<Y, T | undefined>
 ): ReturnType<typeof run<Y, T>> | ReturnType<typeof runAsync<Y, T>> {
