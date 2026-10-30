@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, test } from 'bun:test'
 
 import { attempt, err, ok, safe, taggedError, unwrap, when } from '../../src'
+
 import type { Result } from '../../src'
 
 class NetworkError extends Error {}

@@ -1,8 +1,9 @@
 import { Err, Ok } from '../core/result'
-import type { Result } from '../core/result'
-import type { Tagged } from '../errors/tagged'
 import { taggedError } from '../errors/tagged'
 import { isThenable } from '../utils/inspect'
+
+import type { Result } from '../core/result'
+import type { Tagged } from '../errors/tagged'
 
 export interface Issue {
   readonly message: string

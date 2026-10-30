@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, test } from 'bun:test'
 
 import { err, gen, ok } from '../../src'
+
 import type { Result } from '../../src'
 
 const half = (value: number): Result<number, 'odd'> =>

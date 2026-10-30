@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, test } from 'bun:test'
 
 import { all, err, gen, ok } from '../../src'
+
 import type { Result } from '../../src'
 
 const user = (id: string): Result<{ id: string }, 'missing'> =>

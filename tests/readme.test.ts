@@ -14,6 +14,7 @@ import {
   parse,
   recover
 } from '../src'
+
 import type { Result, ValidationError } from '../src'
 
 class NotFound extends taggedError('NotFound')<{ id: string }> {}

@@ -1,6 +1,7 @@
 import { Ok } from '../core/result'
-import type { Err, ErrorOf, Result } from '../core/result'
 import { isResult } from '../utils/inspect'
+
+import type { Err, ErrorOf, Result } from '../core/result'
 
 type Unwrapped<T> =
   T extends Ok<infer V> ? V : T extends Err<ErrorOf<T>> ? never : T

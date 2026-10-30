@@ -1,7 +1,8 @@
 import { Err, Ok } from '../core/result'
-import type { Result } from '../core/result'
 import { whenSettled } from '../utils/dispatch'
 import { isThenable } from '../utils/inspect'
+
+import type { Result } from '../core/result'
 
 export type Catchable = abstract new (...args: never) => Error
 
