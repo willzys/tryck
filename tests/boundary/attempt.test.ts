@@ -119,9 +119,9 @@ describe('attempt', () => {
     expect(await attempt(rejecting(new NetworkError()), NetworkError)).toEqual(
       err(new NetworkError())
     )
-    expect(attempt(rejecting(new TypeError()), NetworkError)).rejects.toThrow(
-      TypeError
-    )
+    await expect(
+      attempt(rejecting(new TypeError()), NetworkError)
+    ).rejects.toThrow(TypeError)
   })
 })
 
