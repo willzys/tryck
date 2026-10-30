@@ -1,0 +1,37 @@
+# tryck
+
+> Typed errors for TypeScript. Functions return `Result` values instead of throwing; `yield*` inside `gen` unwraps them like Rust's `?`. Only the error classes you name are caught: every other throw stays a defect.
+
+Fourteen functions, no methods, no runtime. Import everything from `tryck`.
+
+## The rules
+
+- Results are plain data: `{ ok: true, value }` or `{ ok: false, error }`. Check `result.ok`, or compare in tests with `expect(r).toEqual(ok(1))`.
+- Sync in, sync out. `function*` gives a `Result`; `async function*` gives a `Promise` of one. In an async body write `yield* await promise`.
+- Catch by class: `attempt(fn, SyntaxError)`. Translate a foreign error into your own with a pair: `attempt(fn, [SyntaxError, InvalidJson])`.
+- Name errors with `class NotFound extends taggedError('NotFound')<{ id: string }> {}`. The fields `_tag`, `name`, `stack` and `toJSON` are reserved.
+- Fold a result with `match(result, { ok, NotFound, err })`. Every `_tag` needs a handler unless `err` is present.
+- Guard inside `gen` with `return yield* err(e)`, not `yield* err(e)`.
+- There is no `.map`, `.andThen` or `isOk`. Compose with `gen`, translate with `mapErr`, handle with `recover` or `match`.
+
+## Functions
+
+- `ok(value)`, `err(error)`: build a result
+- `attempt(fn, ...catches)`: run `fn`, turning the listed classes into an `Err`
+- `safe(fn, ...catches)`: wrap a function once with `attempt`
+- `when(Class, test)`: catch a class only when `test` passes
+- `parse(schema, input)`: validate with any Standard Schema (Zod, Valibot, ArkType) into `Result<T, ValidationError>`
+- `revive(sent, { NotFound })`: rebuild a result that came from JSON, errors included
+- `gen(function* () {})`: chain results with `yield*`
+- `all(results)`: collect several results into one
+- `mapErr(result, fn)`: translate an error
+- `recover(result, handlers)`: handle errors by `_tag` and drop them from the type
+- `match(result, handlers)`: turn a result into a value
+- `unwrap(result)`: get the value or throw the error
+- `taggedError(tag)`: define an error class with a literal `_tag`
+
+## Docs
+
+- [README](https://github.com/willzys/tryck#readme): a three-step tutorial and the common mistakes
+- [API reference](https://github.com/willzys/tryck/blob/main/docs/api.md): every function with examples
+- [Examples](https://github.com/willzys/tryck/tree/main/examples): complete recipes
