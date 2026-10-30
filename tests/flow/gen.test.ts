@@ -93,7 +93,30 @@ describe('gen', () => {
         return 1
       })
 
-    expect(plain).toBeFunction()
+    expect(plain).toThrow('use yield* inside gen')
+  })
+
+  test('rejects a plain yield of an ok at runtime too', () => {
+    const plain = () =>
+      // @ts-expect-error: yield a Result with yield*, not yield
+      gen(function* () {
+        yield ok(5)
+
+        return 1
+      })
+
+    expect(plain).toThrow('use yield* inside gen')
+  })
+
+  test('rejects a plain yield in async bodies', async () => {
+    // @ts-expect-error: yield a Result with yield*, not yield
+    const plain = gen(async function* () {
+      yield 5
+
+      return 1
+    })
+
+    await expect(plain).rejects.toThrow('use yield* inside gen')
   })
 
   test('passes through a result created by another copy of tryck', () => {

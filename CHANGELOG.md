@@ -5,6 +5,7 @@
 ### Changes
 
 - `match` names the `_tag` it could not handle in its runtime error.
+- `gen` throws a `TypeError` on a plain `yield`, which used to leak the yielded value as the result.
 
 ## 0.1.0
 
