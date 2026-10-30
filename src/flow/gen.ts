@@ -11,6 +11,12 @@ type Outcome<Y, T> = Result<Unwrapped<T>, ErrorOf<Y> | ErrorOf<T>>
 const finish = <T>(value: T): T | Ok<T> =>
   isResult(value) ? value : new Ok(value)
 
+const stopped = <Y>(value: Y): Y => {
+  if (isResult(value) && !value.ok) return value
+
+  throw new TypeError('tryck: use yield* inside gen, not yield')
+}
+
 const run = <Y, T>(steps: Generator<Y, T | undefined>) => {
   const step = steps.next()
 
@@ -18,7 +24,7 @@ const run = <Y, T>(steps: Generator<Y, T | undefined>) => {
 
   steps.return(undefined)
 
-  return step.value
+  return stopped(step.value)
 }
 
 const runAsync = async <Y, T>(steps: AsyncGenerator<Y, T | undefined>) => {
@@ -28,7 +34,7 @@ const runAsync = async <Y, T>(steps: AsyncGenerator<Y, T | undefined>) => {
 
   await steps.return(undefined)
 
-  return step.value
+  return stopped(step.value)
 }
 
 /** Runs a generator where `yield*` unwraps results, like Rust's `?`. */
