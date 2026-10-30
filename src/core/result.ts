@@ -1,5 +1,7 @@
 import { whenSettled } from '../utils/dispatch'
 
+import type { Sync } from '../utils/dispatch'
+
 export class Ok<T> {
   readonly ok = true as const
   readonly value: T
@@ -48,12 +50,12 @@ export const err = <const E>(error: E): Err<E> => new Err(error)
 /** Transforms the error of an `Err`, leaving an `Ok` untouched. */
 export function mapErr<T, E, F>(
   result: PromiseLike<Result<T, E>>,
-  fn: (error: E) => F
+  fn: (error: E) => F & Sync<F>
 ): Promise<Result<T, F>>
 
 export function mapErr<T, E, F>(
   result: Result<T, E>,
-  fn: (error: E) => F
+  fn: (error: E) => F & Sync<F>
 ): Result<T, F>
 
 export function mapErr<T, E, F>(

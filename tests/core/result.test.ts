@@ -67,6 +67,14 @@ describe('mapErr', () => {
   test('leaves an ok untouched', () => {
     expect(mapErr(parse('1'), () => 'never')).toEqual(ok(1))
   })
+
+  test('rejects async callbacks, which would wrap a promise in an err', () => {
+    const wrapped = () =>
+      // @ts-expect-error: the callback must return the new error, not a promise
+      mapErr(parse('x'), async () => 400)
+
+    expect(wrapped).toBeFunction()
+  })
 })
 
 describe('Result', () => {
