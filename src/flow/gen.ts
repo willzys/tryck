@@ -2,11 +2,21 @@ import { Ok } from '../core/result'
 import { isResult } from '../utils/inspect'
 
 import type { Err, ErrorOf, Result } from '../core/result'
+import type { IsAny } from '../utils/dispatch'
 
 type Unwrapped<T> =
   T extends Ok<infer V> ? V : T extends Err<unknown> ? never : T
 
 type Outcome<Y, T> = Result<Unwrapped<T>, ErrorOf<Y> | ErrorOf<T>>
+
+type Ran<Body> =
+  IsAny<Body> extends true
+    ? Promise<Outcome<Body, Body>>
+    : Body extends AsyncGenerator<infer Y, infer T>
+      ? Promise<Outcome<Y, T>>
+      : Body extends Generator<infer Y, infer T>
+        ? Outcome<Y, T>
+        : never
 
 const finish = <T>(value: T): T | Ok<T> =>
   isResult(value) ? value : new Ok(value)
@@ -38,13 +48,9 @@ const runAsync = async <Y, T>(steps: AsyncGenerator<Y, T | undefined>) => {
 }
 
 /** Runs a generator where `yield*` unwraps results, like Rust's `?`. */
-export function gen<Y extends Err<unknown>, T>(
-  body: () => AsyncGenerator<Y, T>
-): Promise<Outcome<Y, T>>
-
-export function gen<Y extends Err<unknown>, T>(
-  body: () => Generator<Y, T>
-): Outcome<Y, T>
+export function gen<
+  Body extends Generator<Err<unknown>> | AsyncGenerator<Err<unknown>>
+>(body: () => Body): Ran<Body>
 
 export function gen<Y, T>(
   body: () => Generator<Y, T | undefined> | AsyncGenerator<Y, T | undefined>

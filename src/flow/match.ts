@@ -1,8 +1,14 @@
 import { handlerFor, whenSettled } from '../utils/dispatch'
 import { isTagged } from '../utils/inspect'
 
-import type { Result } from '../core/result'
-import type { HandlerReturn, NoExtraKeys, TagOf } from '../utils/dispatch'
+import type { ErrorOf, Result, ValueOf } from '../core/result'
+import type {
+  HandlerReturn,
+  NoExtraKeys,
+  MaybeAsyncResult,
+  Settled,
+  TagOf
+} from '../utils/dispatch'
 
 type Handler<V, R> = (value: V) => R
 
@@ -49,19 +55,17 @@ const matchSettled = <T, E, R>(
 
 /** Folds a `Result` into one value, with a handler per outcome. */
 export function match<
-  T,
-  H extends NoExtraKeys<H, 'ok' | 'err' | TagOf<E>>,
-  E = never
+  Input extends MaybeAsyncResult,
+  H extends NoExtraKeys<H, 'ok' | 'err' | TagOf<ErrorOf<Awaited<Input>>>>
 >(
-  result: PromiseLike<Result<T, E>>,
-  handlers: Handlers<T, E, unknown> & H
-): Promise<Awaited<HandlerReturn<H>>>
-
-export function match<
-  T,
-  H extends NoExtraKeys<H, 'ok' | 'err' | TagOf<E>>,
-  E = never
->(result: Result<T, E>, handlers: Handlers<T, E, unknown> & H): HandlerReturn<H>
+  result: Input,
+  handlers: Handlers<
+    ValueOf<Awaited<Input>>,
+    ErrorOf<Awaited<Input>>,
+    unknown
+  > &
+    H
+): Settled<Input, HandlerReturn<H>>
 
 export function match<T, E, R>(
   result: Result<T, E> | PromiseLike<Result<T, E>>,
