@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, test } from 'bun:test'
 
 import { err, mapErr, ok } from '../../src'
+
 import type { Err, Ok, Result } from '../../src'
 
 const parse = (input: string): Result<number, 'nan'> => {

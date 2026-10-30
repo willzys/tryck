@@ -6,5 +6,19 @@ export default defineConfig({
   arrowParens: 'avoid',
   semi: false,
   singleQuote: true,
+  sortImports: {
+    groups: [
+      'builtin',
+      'external',
+      ['internal', 'subpath'],
+      ['parent', 'sibling', 'index'],
+      'style',
+      'unknown',
+      'type'
+    ],
+    ignoreCase: true,
+    newlinesBetween: true,
+    order: 'asc'
+  },
   trailingComma: 'none'
 })

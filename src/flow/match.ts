@@ -1,5 +1,6 @@
-import type { Result } from '../core/result'
 import { handlerFor, whenSettled } from '../utils/dispatch'
+
+import type { Result } from '../core/result'
 import type { Only, TagOf } from '../utils/dispatch'
 
 type Handler<V, R> = (value: V) => R

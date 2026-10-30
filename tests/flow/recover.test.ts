@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, test } from 'bun:test'
 
 import { taggedError, err, ok, recover } from '../../src'
+
 import type { Result } from '../../src'
 
 class NotFound extends taggedError('NotFound')<{ id: string }> {}

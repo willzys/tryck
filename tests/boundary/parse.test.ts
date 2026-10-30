@@ -3,6 +3,7 @@ import { describe, expect, expectTypeOf, test } from 'bun:test'
 import { z } from 'zod'
 
 import { ValidationError, gen, ok, parse } from '../../src'
+
 import type { Result } from '../../src'
 
 const User = z.object({ age: z.number().int().min(0), name: z.string() })

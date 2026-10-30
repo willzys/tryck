@@ -11,6 +11,7 @@ import {
   recover,
   when
 } from 'tryck'
+
 import type { Result } from 'tryck'
 
 class NotFound extends taggedError('NotFound')<{ id: string }> {}

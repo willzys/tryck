@@ -1,5 +1,6 @@
-import type { ErrorOf, Result, ValueOf } from '../core/result'
 import { handlerFor, whenSettled } from '../utils/dispatch'
+
+import type { ErrorOf, Result, ValueOf } from '../core/result'
 import type { Only, TagOf } from '../utils/dispatch'
 
 type Recovery<E> = {

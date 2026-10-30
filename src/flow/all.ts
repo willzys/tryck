@@ -1,6 +1,7 @@
 import { Ok } from '../core/result'
-import type { ErrorOf, Result, ValueOf } from '../core/result'
 import { isSettled } from '../utils/inspect'
+
+import type { ErrorOf, Result, ValueOf } from '../core/result'
 
 type Item = Result<unknown, unknown> | PromiseLike<Result<unknown, unknown>>
 
