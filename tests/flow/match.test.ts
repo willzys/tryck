@@ -88,6 +88,45 @@ describe('match', () => {
     expect(incomplete).toBeFunction()
   })
 
+  test('finds handlers inherited from a prototype', () => {
+    class Handlers {
+      private readonly base = 400
+
+      ok() {
+        return this.base - 200
+      }
+
+      NotFound() {
+        return this.base + 4
+      }
+
+      Banned() {
+        return this.base + 3
+      }
+    }
+
+    const shared = { Banned: () => 403, NotFound: () => 404 }
+    const created = Object.assign(Object.create(shared), { ok: () => 200 })
+
+    expect(match(lookup('missing'), new Handlers())).toBe(404)
+    expect(match(lookup('banned'), created)).toBe(403)
+  })
+
+  test('keeps the unhandled error as the cause', () => {
+    const original = new Banned()
+    const result: Result<string, NotFound | Banned> = err(original)
+    let thrown: Error | undefined
+
+    try {
+      // @ts-expect-error: the Banned handler is missing on purpose
+      match(result, { NotFound: () => 404, ok: () => 200 })
+    } catch (error) {
+      if (error instanceof Error) thrown = error
+    }
+
+    expect(thrown?.cause).toBe(original)
+  })
+
   test('ignores tags that name Object.prototype members', () => {
     const inherited = ['constructor', 'toString', 'valueOf', '__proto__'].map(
       tag =>
@@ -98,6 +137,16 @@ describe('match', () => {
     )
 
     expect(inherited).toEqual(['fallback', 'fallback', 'fallback', 'fallback'])
+  })
+
+  test('treats a result whose ok is not exactly true as an err', () => {
+    const forged: Result<string, string> = JSON.parse(
+      '{"ok":"false","error":"forged"}'
+    )
+
+    expect(match(forged, { err: error => error, ok: () => 'ok' })).toBe(
+      'forged'
+    )
   })
 
   test('folds a result parsed back from JSON', () => {
@@ -210,7 +259,7 @@ describe('match', () => {
     // @ts-expect-error: untyped callers can still forget err
     const forgotten = () => match(err('x'), { ok: () => 0 })
 
-    expect(forgotten).toThrow('unhandled error')
+    expect(forgotten).toThrow('no handler for this error')
   })
 
   test('names the tag left unhandled', () => {
@@ -218,6 +267,6 @@ describe('match', () => {
       // @ts-expect-error: untyped callers can still forget a tag
       match(lookup('banned'), { NotFound: () => 0, ok: () => 0 })
 
-    expect(forgotten).toThrow('unhandled error "Banned"')
+    expect(forgotten).toThrow('no handler for "Banned"')
   })
 })

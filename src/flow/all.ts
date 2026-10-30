@@ -21,20 +21,84 @@ const collect = <T, E>(results: readonly Result<T, E>[]): Result<T[], E> => {
   const values: T[] = []
 
   for (const result of results) {
-    if (!result.ok) return result
+    if (result.ok !== true) return result
     values.push(result.value)
   }
 
   return new Ok(values)
 }
 
-/** Collects results into one; the first `Err` in input order wins. */
+const decided = Symbol('decided')
+
+const failureOf = async <O>(outcome: Promise<O>) => {
+  try {
+    await outcome
+
+    return decided
+  } catch (error) {
+    return error
+  }
+}
+
+const reraise = async <R>(item: Promise<R>, reported: Promise<unknown>) => {
+  try {
+    await item
+  } catch (error) {
+    if ((await reported) !== error) throw error
+  }
+}
+
+// Re-raises the defects the outcome did not report.
+const surfaceLate = <R, O>(
+  pending: readonly Promise<R>[],
+  outcome: Promise<O>
+) => {
+  const reported = failureOf(outcome)
+
+  for (const item of pending) reraise(item, reported)
+}
+
+// Awaits in input order, so an Err returns without waiting for later items.
+const collectAsync = <T, E>(
+  items: readonly (Result<T, E> | PromiseLike<Result<T, E>>)[]
+): Promise<Result<T[], E>> => {
+  const pending = items.map(item => Promise.resolve(item))
+  const defects = Promise.all(pending)
+  const values: T[] = []
+
+  const from = async (index: number): Promise<Result<T[], E>> => {
+    const item = pending[index]
+
+    if (!item) return new Ok(values)
+
+    const result = await Promise.race([item, defects.then(() => item)])
+
+    if (result.ok !== true) return result
+
+    values.push(result.value)
+
+    return from(index + 1)
+  }
+
+  const outcome = from(0)
+
+  surfaceLate(pending, outcome)
+
+  return outcome
+}
+
+/**
+ * Collects results into one; the first `Err` in input order wins, without
+ * waiting for the items after it.
+ *
+ * @example
+ * await all([findUser(id), findPlan(id)]) // Result<[User, Plan], NotFound>
+ */
+
 export function all<const Rs extends readonly Item[]>(results: Rs): All<Rs>
 
 export function all<T, E>(
   results: readonly (Result<T, E> | PromiseLike<Result<T, E>>)[]
 ): Result<T[], E> | Promise<Result<T[], E>> {
-  return isSettled(results)
-    ? collect(results)
-    : Promise.all(results).then(collect)
+  return isSettled(results) ? collect(results) : collectAsync(results)
 }

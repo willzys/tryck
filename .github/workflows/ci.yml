@@ -41,6 +41,8 @@ jobs:
         run: bun run build
       - run: bun run attw
       - run: bun run treeshake
+      - run: bun run size
+      - run: bun run snippets
       - run: bun run pack:test
       - name: Import the build on Node 24
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}

@@ -72,7 +72,26 @@ const translate = (catches: Catches, cause: unknown): Error => {
   throw cause
 }
 
-/** Catches a class only when `test` passes. */
+const chain = (error: Error, cause: Error): Error => {
+  if (!('cause' in error)) {
+    Object.defineProperty(error, 'cause', {
+      configurable: true,
+      value: cause,
+      writable: true
+    })
+  }
+
+  return error
+}
+
+/**
+ * Catches a class only when `test` passes.
+ *
+ * @example
+ * const taken = when(DbError, failure => failure.code === 'unique')
+ * await attempt(() => insertUser(fields), [taken, EmailTaken]) // Result<User, EmailTaken>
+ */
+
 export function when<C extends Catchable>(
   type: C,
   test: (error: InstanceType<C>) => boolean
@@ -83,12 +102,28 @@ export function when(
   test: (error: Error) => boolean
 ): Guard<Error> {
   return {
-    [Symbol.hasInstance]: (value: unknown): value is Error =>
-      value instanceof type && test(value)
+    [Symbol.hasInstance]: (value: unknown): value is Error => {
+      if (!(value instanceof type)) return false
+
+      // A throwing check is a defect; keep the inspected error as cause.
+      try {
+        return test(value)
+      } catch (error) {
+        throw error instanceof Error ? chain(error, value) : error
+      }
+    }
   }
 }
 
-/** Runs `fn`, turning the listed error classes into an `Err`. */
+/**
+ * Runs `fn`, turning the listed error classes into an `Err`.
+ * Anything else keeps throwing.
+ *
+ * @example
+ * attempt(() => JSON.parse(text), [SyntaxError, InvalidJson]) // Result<any, InvalidJson>
+ * // JSON.parse returns any: pass the value through parse(schema, value) to type it
+ */
+
 export function attempt<R, const C extends Catches>(
   fn: () => R,
   ...catches: C
@@ -112,16 +147,35 @@ export function attempt<R>(
   }
 }
 
-/** Wraps `fn` once so every call goes through `attempt`. */
-export const safe =
-  <A extends readonly unknown[], R, const C extends Catches>(
-    fn: (...args: A) => R,
-    ...catches: C
-  ): ((...args: A) => Attempted<R, Caught<C>>) =>
-  (...args) =>
-    attempt(() => fn(...args), ...catches)
+/**
+ * Wraps `fn` once so every call goes through `attempt`.
+ *
+ * @example
+ * const parseJson = safe(JSON.parse, [SyntaxError, InvalidJson])
+ * parseJson('{') // Err<InvalidJson>
+ */
 
-/** Returns the value of an `Ok` or throws the error of an `Err`. */
+export const safe = <
+  A extends readonly unknown[],
+  R,
+  const C extends Catches,
+  This = void
+>(
+  fn: (this: This, ...args: A) => R,
+  ...catches: C
+): ((this: This, ...args: A) => Attempted<R, Caught<C>>) =>
+  // A function, not an arrow, so methods keep their this.
+  function guarded(this: This, ...args) {
+    return attempt(() => fn.call(this, ...args), ...catches)
+  }
+
+/**
+ * Returns the value of an `Ok` or throws the error of an `Err`.
+ *
+ * @example
+ * const user = await unwrap(findUser(id)) // User, or throws NotFound
+ */
+
 export function unwrap<Input extends MaybeAsyncResult>(
   result: Input
 ): Settled<Input, ValueOf<Awaited<Input>>>
@@ -130,7 +184,7 @@ export function unwrap<T, E>(
   result: Result<T, E> | PromiseLike<Result<T, E>>
 ): T | Promise<T> {
   return whenSettled(result, (settled): T => {
-    if (settled.ok) return settled.value
+    if (settled.ok === true) return settled.value
     throw settled.error
   })
 }

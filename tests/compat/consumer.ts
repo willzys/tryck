@@ -9,6 +9,8 @@ import {
   ok,
   parse,
   recover,
+  revive,
+  safe,
   when
 } from 'tryck'
 
@@ -65,3 +67,42 @@ export const guarded = (raw: string): string | number => {
 
   return parsed.ok ? parsed.value : parsed.error._tag
 }
+
+const TimedOut = taggedError('TimedOut')
+
+export const timedOut: Result<never, InstanceType<typeof TimedOut>> = err(
+  new TimedOut()
+)
+
+const counter = {
+  count: 1,
+  read(this: { count: number }) {
+    return this.count
+  }
+}
+
+const wrapped = { count: 2, read: safe(counter.read, RangeError) }
+
+export const readCount = () => wrapped.read()
+
+// @ts-expect-error: a method that declares this cannot be called bare
+export const bare = () => safe(counter.read, RangeError)()
+
+export const forgotAsync = () =>
+  // @ts-expect-error: a sync body must not return a promise
+  gen(function* () {
+    return Promise.resolve(1)
+  })
+
+// @ts-expect-error: mapErr takes a synchronous callback
+export const asyncMap = () => mapErr(err('late'), async () => 'mapped')
+
+export const extraKey = () =>
+  // @ts-expect-error: a handler key must be ok, err or a _tag of the error
+  match(err(new Invalid()), { Gone: () => 3, err: () => 2, ok: () => 1 })
+
+export const revived = (text: string): Result<unknown, NotFound | Invalid> =>
+  revive(JSON.parse(text), { Invalid, NotFound })
+
+// @ts-expect-error: each key must be the _tag of its class
+export const swapped = () => revive(JSON.parse('{}'), { NotFound: Invalid })

@@ -68,6 +68,31 @@ describe('gen', () => {
     expect(released).toBe(true)
   })
 
+  test('lets a finally block replace the error with its own', () => {
+    const result = gen(function* () {
+      try {
+        return yield* err('body' as const)
+      } finally {
+        yield* err('cleanup' as const)
+      }
+    })
+
+    expectTypeOf(result).toEqualTypeOf<Result<never, 'body' | 'cleanup'>>()
+    expect(result).toEqual(err('cleanup'))
+  })
+
+  test('lets a finally block fail a body that returned', async () => {
+    const result = await gen(async function* () {
+      try {
+        return 1
+      } finally {
+        yield* err('cleanup')
+      }
+    })
+
+    expect(result).toEqual(err('cleanup'))
+  })
+
   test('passes through a returned result instead of nesting it', () => {
     const failed = gen(function* () {
       const value = yield* half(8)
@@ -82,6 +107,42 @@ describe('gen', () => {
         return ok(1)
       })
     ).toEqual(ok(1))
+  })
+
+  test('passes through a result that came from JSON', () => {
+    const failed = gen(function* () {
+      const parsed: Result<number, 'remote'> = JSON.parse(
+        '{"ok":false,"error":"remote"}'
+      )
+
+      return parsed
+    })
+
+    expect(failed).toEqual(err('remote'))
+    expect(
+      gen(function* () {
+        const parsed: Result<number, never> = JSON.parse(
+          '{"ok":true,"value":1}'
+        )
+
+        return parsed
+      })
+    ).toEqual(ok(1))
+  })
+
+  test('rejects a sync body that returns a promise', async () => {
+    const forgotAsync = () =>
+      // @ts-expect-error: a body that returns a promise must be async
+      gen(function* () {
+        return Promise.resolve(1)
+      })
+
+    expect(forgotAsync).toThrow('async function*')
+    await expect(
+      gen(async function* () {
+        return await Promise.resolve(1)
+      })
+    ).resolves.toEqual(ok(1))
   })
 
   test('rejects a plain yield, which would skip unwrapping', () => {

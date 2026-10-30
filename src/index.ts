@@ -1,5 +1,6 @@
 export { attempt, safe, unwrap, when } from './boundary/attempt'
 export { ValidationError, parse } from './boundary/parse'
+export { revive } from './boundary/revive'
 export { err, mapErr, ok } from './core/result'
 export { taggedError } from './errors/tagged'
 export { all } from './flow/all'

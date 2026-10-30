@@ -213,6 +213,21 @@ const failWith = (status: number) => () => {
 
 const missing = when(HttpError, failure => failure.status === 404)
 
+describe('safe', () => {
+  test('keeps the this of a method', () => {
+    const api = {
+      count: 1,
+      read() {
+        return this.count
+      }
+    }
+
+    const wrapped = { count: 2, read: safe(api.read, TypeError) }
+
+    expect(wrapped.read()).toEqual(ok(2))
+  })
+})
+
 describe('when', () => {
   test('catches an error only when the check passes', () => {
     const result = attempt(failWith(404), missing)
@@ -223,6 +238,23 @@ describe('when', () => {
 
   test('rethrows the same class when the check fails', () => {
     expect(() => attempt(failWith(500), missing)).toThrow('HTTP 500')
+  })
+
+  test('rethrows a throwing check with the inspected error as cause', () => {
+    const broken = when(HttpError, () => {
+      throw new Error('guard boom')
+    })
+
+    let thrown: Error | undefined
+
+    try {
+      attempt(failWith(404), broken)
+    } catch (error) {
+      if (error instanceof Error) thrown = error
+    }
+
+    expect(thrown?.message).toBe('guard boom')
+    expect(thrown?.cause).toBeInstanceOf(HttpError)
   })
 
   test('works inside a translation pair', () => {
@@ -265,7 +297,7 @@ describe('when', () => {
 
     expectTypeOf(caught).toEqualTypeOf<Result<never, NotFound>>()
     expect(caught.ok ? undefined : caught.error).toBeInstanceOf(NotFound)
-    expect(attempt(rejectWith(500), missing)).rejects.toThrow('HTTP 500')
+    await expect(attempt(rejectWith(500), missing)).rejects.toThrow('HTTP 500')
   })
 
   test('unions several guards and classes', () => {

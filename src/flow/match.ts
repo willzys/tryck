@@ -40,20 +40,34 @@ const matchSettled = <T, E, R>(
   result: Result<T, E>,
   handlers: MatchTable<T | E, R>
 ): R => {
-  if (result.ok) return handlers.ok(result.value)
+  if (result.ok === true) return handlers.ok(result.value)
 
   const handle = handlerFor(handlers, result.error)
 
   if (!handle) {
-    const tag = isTagged(result.error) ? ` "${result.error._tag}"` : ''
+    const tag = isTagged(result.error) ? `"${result.error._tag}"` : 'this error'
 
-    throw new TypeError(`tryck: unhandled error${tag}`)
+    throw new TypeError(
+      `tryck: no handler for ${tag}; add one or an err handler`,
+      { cause: result.error }
+    )
   }
 
-  return handle(result.error)
+  return handle.call(handlers, result.error)
 }
 
-/** Folds a `Result` into one value, with a handler per outcome. */
+/**
+ * Folds a `Result` into one value, with a handler per outcome. Tagged errors
+ * need a handler per `_tag`; `err` handles whatever is left.
+ *
+ * @example
+ * await match(signUp(body), {
+ *   ok: () => 201,
+ *   ValidationError: () => 400,
+ *   EmailTaken: () => 409
+ * }) // number
+ */
+
 export function match<
   Input extends MaybeAsyncResult,
   H extends NoExtraKeys<H, 'ok' | 'err' | TagOf<ErrorOf<Awaited<Input>>>>
