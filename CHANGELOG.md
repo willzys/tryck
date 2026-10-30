@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Breaking
+
+- `mapErr` rejects async callbacks at compile time. They used to produce an `Err` holding a promise, which `match` and `recover` could not dispatch on.
+
 ### Changes
 
 - `match` names the `_tag` it could not handle in its runtime error.
