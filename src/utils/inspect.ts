@@ -1,3 +1,6 @@
+export const isBigint = (value: unknown): value is bigint =>
+  typeof value === 'bigint'
+
 export const isThenable = (value: unknown): value is PromiseLike<unknown> =>
   typeof value === 'object' &&
   value !== null &&
@@ -17,7 +20,6 @@ export const isSettled = <T>(
 export const isResult = <V>(value: V): value is V & { readonly ok: boolean } =>
   typeof value === 'object' &&
   value !== null &&
-  Symbol.iterator in value &&
   'ok' in value &&
   (value.ok === true
     ? 'value' in value

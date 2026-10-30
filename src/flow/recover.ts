@@ -32,14 +32,20 @@ const recoverSettled = <T, E, U, F>(
   result: Result<T, E>,
   handlers: RecoveryTable<E, U, F>
 ): Result<T | U, E | F> => {
-  if (result.ok) return result
+  if (result.ok === true) return result
 
   const handle = handlerFor(handlers, result.error)
 
-  return handle ? handle(result.error) : result
+  return handle ? handle.call(handlers, result.error) : result
 }
 
-/** Handles errors by `_tag` and removes them from the error type. */
+/**
+ * Handles errors by `_tag` and removes them from the error type.
+ *
+ * @example
+ * await recover(findUser(id), { NotFound: () => ok(guest) }) // Result<User, never>
+ */
+
 export function recover<
   Input extends MaybeAsyncResult,
   H extends NoExtraKeys<H, 'err' | TagOf<ErrorOf<Awaited<Input>>>>

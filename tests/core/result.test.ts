@@ -11,6 +11,11 @@ const parse = (input: string): Result<number, 'nan'> => {
 }
 
 describe('ok', () => {
+  test('is frozen', () => {
+    expect(Object.isFrozen(ok(1))).toBe(true)
+    expect(Object.isFrozen(err('x'))).toBe(true)
+  })
+
   test('carries a value', () => {
     const result = ok(1)
 

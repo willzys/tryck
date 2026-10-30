@@ -26,6 +26,13 @@ describe('recover', () => {
     expect(result).toEqual(ok('guest'))
   })
 
+  test('finds handlers inherited from a prototype', () => {
+    const shared = { NotFound: () => ok('guest') }
+    const result = recover(lookup('missing'), Object.create(shared))
+
+    expect(result).toEqual(ok('guest'))
+  })
+
   test('leaves other errors untouched', () => {
     const result = recover(lookup('banned'), { NotFound: () => ok('guest') })
 
