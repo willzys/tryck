@@ -12,146 +12,92 @@ bun add tryck
 
 ESM only. Requires TypeScript 5.0 or newer and an ES2022 runtime. Tested on Node 22+ and Bun.
 
+## Quick start
+
+Learn it in three steps; each one is useful on its own.
+
+### 1. Replace a `try/catch`
+
 ```ts
-import { attempt, err, gen, mapErr, match, parse, taggedError } from 'tryck'
-import { z } from 'zod'
+import { attempt, match } from 'tryck'
 
-class NotFound extends taggedError('NotFound')<{ id: string }> {}
-class Banned extends taggedError('Banned') {}
-class InvalidToken extends taggedError('InvalidToken') {}
+const config = attempt(() => JSON.parse(text), SyntaxError)
 
-const Token = z.object({ userId: z.string() })
-
-const profile = (header: string) =>
-  gen(async function* loadProfile() {
-    const decoded = yield* attempt(
-      () => JSON.parse(atob(header)),
-      [DOMException, InvalidToken],
-      [SyntaxError, InvalidToken]
-    )
-    const token = yield* mapErr(
-      parse(Token, decoded),
-      cause => new InvalidToken({ cause })
-    )
-    const user = yield* await findUser(token.userId)
-    if (user.banned) return yield* err(new Banned())
-    return user.profile
-  })
-
-const response = match(await profile(header), {
-  ok: profile => json(profile),
-  NotFound: error => status(404, `no user ${error.id}`),
-  Banned: () => status(403),
-  InvalidToken: () => status(400)
+const settings = match(config, {
+  ok: value => value,
+  err: () => defaults
 })
 ```
 
-Every failure is in the type and every handler is checked. A bug like `user.profile.nmae.length` still throws to your error tracker instead of being caught by accident.
+Only `SyntaxError` is caught: any other error, such as a bug in your own code, still throws and reaches your error tracker instead of silently becoming `defaults`.
+
+### 2. Chain steps that can fail
+
+```ts
+import { gen } from 'tryck'
+
+const loadAccount = (id: string) =>
+  gen(async function* loadUserAndPlan() {
+    const user = yield* await findUser(id)
+    const plan = yield* await findPlan(user.planId)
+    return { plan, user }
+  }) // Promise<Result<{ plan: Plan; user: User }, NotFound>>
+```
+
+`yield*` gives back the value of an `Ok` or stops at the first `Err`, like Rust's `?`. No `if` after each step, and the errors of every step end up in the type.
+
+### 3. Name your errors
+
+```ts
+import { err, match, taggedError } from 'tryck'
+
+class NotFound extends taggedError('NotFound')<{ id: string }> {}
+class Banned extends taggedError('Banned') {}
+
+const findActiveUser = (id: string) =>
+  gen(async function* findActive() {
+    const user = yield* await findUser(id)
+    if (user.banned) return yield* err(new Banned())
+    return user
+  })
+
+const status = await match(findActiveUser(id), {
+  ok: () => 200,
+  NotFound: () => 404,
+  Banned: () => 403
+})
+```
+
+`match` needs a handler for every error. Add a new one to `findActiveUser` and this code stops compiling until it has a status.
+
+## Common mistakes
+
+- **`yield` instead of `yield*`.** Only `yield*` unwraps a result; a plain `yield` is a type error.
+- **A missing `await`.** In an `async function*`, write `yield* await findUser(id)`: `yield*` cannot take a promise.
+- **A guard without `return`.** `if (!user) yield* err(e)` does not narrow `user`; write `return yield* err(e)`.
+- **Mixing native and tagged errors.** `SyntaxError` adds nothing to `Error`, so a union with tagged errors collapses into `Error`. Translate it first: `[SyntaxError, InvalidJson]`.
+- **Catching `TypeError`.** It is what a typo or a lost `this` throws; catching it turns bugs into expected failures.
 
 ## API
 
-Every function that takes a `Result` also takes a `Promise` of one and gives a `Promise` back. The examples share a small sign-up flow, where `findUser(id)` returns `Promise<Result<User, NotFound>>`.
+Every function that takes a `Result` also takes a `Promise` of one.
 
-### `ok(value)` and `err(error)`
+| Function | Does |
+| --- | --- |
+| `ok(value)`, `err(error)` | Build a result |
+| `attempt(fn, ...catches)` | Run `fn`, turning the listed errors into an `Err` |
+| `safe(fn, ...catches)` | Wrap a function once with `attempt` |
+| `when(Class, test)` | Catch a class only when a check passes |
+| `parse(schema, input)` | Validate input with any Standard Schema |
+| `gen(function* name() {})` | Chain results with `yield*` |
+| `all(results)` | Collect several results into one |
+| `mapErr(result, fn)` | Translate an error |
+| `recover(result, handlers)` | Handle errors by tag and drop them from the type |
+| `match(result, handlers)` | Turn a result into a value, handling every error |
+| `unwrap(result)` | Get the value or throw the error |
+| `taggedError(tag)` | Define an error class with a `_tag` |
 
-```ts
-const checkAge = (age: number): Result<number, 'underage'> =>
-  age >= 18 ? ok(age) : err('underage')
-
-const result = checkAge(16)
-if (!result.ok) result.error // 'underage'
-```
-
-### `attempt(fn, ...catches)`
-
-Runs `fn` and turns instances of the listed `Error` classes into an `Err`; anything else is rethrown. A `[Caught, Into]` pair translates a foreign error into one of yours, and `when` catches a class only when a check passes.
-
-```ts
-attempt(() => JSON.parse(text), [SyntaxError, InvalidJson]) // Result<any, InvalidJson>
-
-const taken = when(DbError, failure => failure.code === 'unique')
-await attempt(() => insertUser(fields), [taken, EmailTaken]) // Result<User, EmailTaken>
-```
-
-Translate native errors such as `SyntaxError` before mixing them with tagged ones: they add nothing to `Error`, so TypeScript would fold the union into plain `Error`.
-
-### `safe(fn, ...catches)`
-
-Wraps a function once so every call goes through `attempt`.
-
-```ts
-const parseJson = safe(JSON.parse, [SyntaxError, InvalidJson])
-parseJson('{') // Err<InvalidJson>
-```
-
-### `parse(schema, input)`
-
-Validates `input` with any [Standard Schema](https://standardschema.dev) (Zod, Valibot, ArkType) and returns the output or a `ValidationError` listing every issue.
-
-```ts
-const Signup = z.object({ email: z.email(), password: z.string().min(8) })
-
-parse(Signup, body) // Result<{ email: string; password: string }, ValidationError>
-```
-
-### `gen(function* name() {})`
-
-`yield*` on an `Ok` gives back its value; on an `Err` it stops the body with that error. Errors from every step are unioned, a returned `Result` passes through as is, and `finally` blocks run on the way out. Use `async function*` with `yield* await` for promises, and `return yield* err(e)` as a guard.
-
-```ts
-const signUp = (body: unknown) =>
-  gen(async function* signUpUser() {
-    const fields = yield* parse(Signup, body)
-    return yield* await attempt(() => insertUser(fields), [taken, EmailTaken])
-  }) // Promise<Result<User, ValidationError | EmailTaken>>
-```
-
-### `all(results)`
-
-Collects a tuple of results, or promises of them, into one. The first `Err` in input order wins; nothing is cancelled.
-
-```ts
-await all([findUser(id), findPlan(id)]) // Result<[User, Plan], NotFound>
-```
-
-### `mapErr(result, fn)` and `recover(result, handlers)`
-
-`mapErr` translates an error between layers. `recover` handles errors by `_tag`, or all of them with `err`, and removes them from the type.
-
-```ts
-await mapErr(findUser(id), cause => new Unauthorized({ cause })) // Result<User, Unauthorized>
-await recover(findUser(id), { NotFound: () => ok(guest) }) // Result<User, never>
-```
-
-### `match(result, handlers)`
-
-Folds a `Result` into one value. Tagged errors need a handler per `_tag`, checked for exhaustiveness; `err` handles whatever is left.
-
-```ts
-const status = await match(signUp(body), {
-  ok: () => 201,
-  ValidationError: () => 400,
-  EmailTaken: () => 409
-}) // number
-```
-
-### `unwrap(result)`
-
-Returns the value or throws the error as is, so `unwrap(attempt(fn, E))` behaves like `fn()`. Meant for scripts, tests and framework edges.
-
-```ts
-const user = await unwrap(findUser(id)) // User, or throws NotFound
-```
-
-### `taggedError(tag)`
-
-```ts
-class RateLimited extends taggedError('RateLimited')<{ retryIn: number }> {}
-
-new RateLimited({ retryIn: 30 })._tag // 'RateLimited'
-```
-
-A real `Error` with typed fields; `message` and `cause` are forwarded to `Error`. Its JSON is meant for logs: map tags to public messages instead of sending errors to clients.
+Every function with examples: [docs/api.md](docs/api.md).
 
 ## Examples
 
