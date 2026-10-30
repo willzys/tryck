@@ -4,9 +4,17 @@ export type TagOf<E> = E extends { readonly _tag: infer K extends string }
   ? K
   : never
 
-export type Only<H, K> = {
+export type NoExtraKeys<H, K> = {
   readonly [Key in keyof H]: Key extends K ? H[Key] : never
 }
+
+export type HandlerReturn<H> = {
+  [K in keyof H]: H[K] extends (...args: never) => infer R ? R : never
+}[keyof H]
+
+export type Async<R> = Extract<R, PromiseLike<unknown>>
+
+export type Sync<R> = Exclude<R, PromiseLike<unknown>>
 
 export const whenSettled = <A, B>(
   value: A | PromiseLike<A>,

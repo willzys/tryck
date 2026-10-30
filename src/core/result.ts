@@ -35,8 +35,9 @@ export type ErrorOf<R> = R extends Err<infer E> ? E : never
 
 /** Wraps a value in a successful `Result`. */
 export function ok(): Ok<void>
-/** Wraps a value in a successful `Result`. */
+
 export function ok<T>(value: T): Ok<T>
+
 export function ok<T>(value?: T): Ok<T | undefined> {
   return new Ok(value)
 }
@@ -49,11 +50,12 @@ export function mapErr<T, E, F>(
   result: PromiseLike<Result<T, E>>,
   fn: (error: E) => F
 ): Promise<Result<T, F>>
-/** Transforms the error of an `Err`, leaving an `Ok` untouched. */
+
 export function mapErr<T, E, F>(
   result: Result<T, E>,
   fn: (error: E) => F
 ): Result<T, F>
+
 export function mapErr<T, E, F>(
   result: Result<T, E> | PromiseLike<Result<T, E>>,
   fn: (error: E) => F

@@ -3,6 +3,7 @@ import { whenSettled } from '../utils/dispatch'
 import { isThenable } from '../utils/inspect'
 
 import type { Result } from '../core/result'
+import type { Async, Sync } from '../utils/dispatch'
 
 export type Catchable = abstract new (...args: never) => Error
 
@@ -32,19 +33,20 @@ type CaughtBy<C> = C extends readonly [unknown, infer T extends Translation]
 
 export type Caught<C extends Catches> = CaughtBy<C[number]>
 
-type Async<R> = Extract<R, PromiseLike<unknown>>
+type IsAny<R> = 0 extends 1 & R ? true : false
 
-type Sync<R> = Exclude<R, PromiseLike<unknown>>
+type IsUnknown<R> = unknown extends R ? true : false
 
-export type Attempted<R, E> = 0 extends 1 & R
-  ? Result<R, E>
-  : unknown extends R
-    ? Result<R, E> | Promise<Result<R, E>>
-    : [Async<R>] extends [never]
-      ? Result<R, E>
-      : [Sync<R>] extends [never]
-        ? Promise<Result<Awaited<R>, E>>
-        : Result<Sync<R>, E> | Promise<Result<Awaited<Async<R>>, E>>
+export type Attempted<R, E> =
+  IsAny<R> extends true
+    ? Result<R, E>
+    : IsUnknown<R> extends true
+      ? Result<R, E> | Promise<Result<R, E>>
+      : [Async<R>] extends [never]
+        ? Result<R, E>
+        : [Sync<R>] extends [never]
+          ? Promise<Result<Awaited<R>, E>>
+          : Result<Sync<R>, E> | Promise<Result<Awaited<Async<R>>, E>>
 
 const isTranslation = (
   entry: Catch
@@ -71,6 +73,7 @@ export function when<C extends Catchable>(
   type: C,
   test: (error: InstanceType<C>) => boolean
 ): Guard<InstanceType<C>>
+
 export function when(
   type: Catchable,
   test: (error: Error) => boolean
@@ -86,6 +89,7 @@ export function attempt<R, const C extends Catches>(
   fn: () => R,
   ...catches: C
 ): Attempted<R, Caught<C>>
+
 export function attempt<R>(
   fn: () => R,
   ...catches: Catches
@@ -115,8 +119,9 @@ export const safe =
 
 /** Returns the value of an `Ok` or throws the error of an `Err`. */
 export function unwrap<T, E>(result: PromiseLike<Result<T, E>>): Promise<T>
-/** Returns the value of an `Ok` or throws the error of an `Err`. */
+
 export function unwrap<T, E>(result: Result<T, E>): T
+
 export function unwrap<T, E>(
   result: Result<T, E> | PromiseLike<Result<T, E>>
 ): T | Promise<T> {

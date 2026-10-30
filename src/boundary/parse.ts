@@ -4,6 +4,7 @@ import { isThenable } from '../utils/inspect'
 
 import type { Result } from '../core/result'
 import type { Tagged } from '../errors/tagged'
+import type { Sync } from '../utils/dispatch'
 
 export interface Issue {
   readonly message: string
@@ -22,16 +23,13 @@ export interface Schema<I, R> {
 
 type Output<R> = Extract<Awaited<R>, { readonly value: unknown }>['value']
 
-type Synchronous<R> = [Exclude<R, PromiseLike<unknown>>] extends [never]
-  ? never
-  : object
+type RejectAsync<R> = [Sync<R>] extends [never] ? never : object
 
 /** The `Err` of `parse`, listing every schema issue. */
 export interface ValidationError extends Tagged<'ValidationError'> {
   readonly issues: readonly Issue[]
 }
 
-/** The `Err` of `parse`, listing every schema issue. */
 export const ValidationError: new (fields: {
   readonly issues: readonly Issue[]
   readonly message?: string
@@ -42,9 +40,10 @@ export function parse<
   I,
   R extends Validation<unknown> | PromiseLike<Validation<unknown>>
 >(
-  schema: Schema<I, R> & Synchronous<R>,
+  schema: Schema<I, R> & RejectAsync<R>,
   input: I
 ): Result<Output<R>, ValidationError>
+
 export function parse<I, O>(
   schema: Schema<I, Validation<O> | PromiseLike<Validation<O>>>,
   input: I

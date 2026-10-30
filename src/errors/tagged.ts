@@ -9,7 +9,7 @@ type Fields = Readonly<Partial<Pick<Error, 'cause' | 'message'>>>
 
 type Reserved = 'ok' | 'err'
 
-type Owned<P> = {
+type WithoutBuiltIns<P> = {
   readonly [K in keyof P]: K extends '_tag' | 'name' | 'stack' ? never : P[K]
 }
 
@@ -19,7 +19,7 @@ export interface Tagged<Tag extends string> extends Error {
 }
 
 export interface TaggedErrorClass<Tag extends string> {
-  new <P extends Owned<P> = Record<never, never>>(
+  new <P extends WithoutBuiltIns<P> = Record<never, never>>(
     ...fields: keyof P extends never ? [fields?: Fields] : [fields: P & Fields]
   ): Tagged<Tag> & Readonly<P>
   readonly prototype: Tagged<Tag>
@@ -29,6 +29,7 @@ export interface TaggedErrorClass<Tag extends string> {
 export function taggedError<const Tag extends string>(
   tag: Exclude<Tag, Reserved>
 ): TaggedErrorClass<Tag>
+
 export function taggedError(tag: string): new (...fields: never) => Error {
   if (tag === 'ok' || tag === 'err') {
     throw new TypeError(`tryck: "${tag}" is reserved for match handlers`)
