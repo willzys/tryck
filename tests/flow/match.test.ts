@@ -205,4 +205,12 @@ describe('match', () => {
 
     expect(forgotten).toThrow('unhandled error')
   })
+
+  test('names the tag left unhandled', () => {
+    const forgotten = () =>
+      // @ts-expect-error: untyped callers can still forget a tag
+      match(lookup('banned'), { NotFound: () => 0, ok: () => 0 })
+
+    expect(forgotten).toThrow('unhandled error "Banned"')
+  })
 })
