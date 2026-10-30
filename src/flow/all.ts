@@ -2,6 +2,7 @@ import { Ok } from '../core/result'
 import { isSettled } from '../utils/inspect'
 
 import type { ErrorOf, Result, ValueOf } from '../core/result'
+import type { Async } from '../utils/dispatch'
 
 type Item = Result<unknown, unknown> | PromiseLike<Result<unknown, unknown>>
 
@@ -10,9 +11,9 @@ type Collected<Rs extends readonly Item[]> = Result<
   ErrorOf<Awaited<Rs[number]>>
 >
 
-export type All<Rs extends readonly Item[]> = [
-  Extract<Rs[number], PromiseLike<unknown>>
-] extends [never]
+export type All<Rs extends readonly Item[]> = [Async<Rs[number]>] extends [
+  never
+]
   ? Collected<Rs>
   : Promise<Collected<Rs>>
 
@@ -29,6 +30,7 @@ const collect = <T, E>(results: readonly Result<T, E>[]): Result<T[], E> => {
 
 /** Collects results into one; the first `Err` in input order wins. */
 export function all<const Rs extends readonly Item[]>(results: Rs): All<Rs>
+
 export function all<T, E>(
   results: readonly (Result<T, E> | PromiseLike<Result<T, E>>)[]
 ): Result<T[], E> | Promise<Result<T[], E>> {
